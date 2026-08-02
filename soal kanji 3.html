@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Kanji Irodori 1 (50 Soal)</title>
+    <!-- Chart.js untuk Grafik Riwayat Nilai -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        .question-card {
+            margin-bottom: 20px;
+        }
+
+        .kanji-display {
+            font-size: 42px;
+            text-align: center;
+            margin: 15px 0;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .option-btn {
+            background-color: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .option-btn:hover {
+            background-color: #e2e6ea;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            height: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .badge-correct {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .badge-wrong {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            position: relative;
+            height: 250px;
+        }
+
+        .history-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Halaman Registrasi / Login User -->
+    <div id="auth-screen" class="screen active">
+        <h1>Kuis Kanji Irodori 1</h1>
+        <p style="text-align: center;">Uji cara baca dan penulisan Kanji Irodori 1 (50 Soal Acak).</p>
+        <label for="username">Masukkan Nama Pengguna:</label>
+        <input type="text" id="username" placeholder="Contoh: Budi Kenji" required>
+        <button onclick="startApp()">Mulai Kuis</button>
+
+        <div style="margin-top: 40px;">
+            <h3>Peringkat (Ranking)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Peringkat</th>
+                        <th>Nama</th>
+                        <th>Skor Tertinggi</th>
+                        <th>Percobaan</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Data Peringkat -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Halaman Kuis -->
+    <div id="quiz-screen" class="screen">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="user-display"></span>
+            <span id="question-number">Soal 1/50</span>
+        </div>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
+        </div>
+
+        <div class="question-card">
+            <h3 id="question-title">Apa cara baca dari Kanji berikut?</h3>
+            <div id="kanji-target" class="kanji-display">学生</div>
+            <div class="options-grid" id="options-container">
+                <!-- Pilihan Jawaban -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Halaman Hasil / Chart & History -->
+    <div id="result-screen" class="screen">
+        <h2>Hasil Kuis Anda</h2>
+        <p style="text-align: center; font-size: 24px;" id="final-score">Skor: 0 / 100</p>
+
+        <button onclick="restartQuiz()">Ulangi Kuis (50 Soal Baru)</button>
+        <button onclick="logout()" style="background-color: #6c757d;">Ganti Pengguna</button>
+
+        <hr style="margin: 30px 0;">
+
+        <!-- RINCIAN HISTORY JAWABAN (FITUR BARU) -->
+        <h3>Detail Jawaban Kuis Ini (50 Soal)</h3>
+        <div class="history-list-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Soal</th>
+                        <th>Jawaban Anda</th>
+                        <th>Jawaban Benar</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="quiz-history-body">
+                    <!-- Rincian Jawaban Soal -->
+                </tbody>
+            </table>
+        </div>
+
+        <hr style="margin: 30px 0;">
+
+        <h3>Grafik Riwayat Nilai</h3>
+        <div class="chart-container">
+            <canvas id="scoreChart"></canvas>
+        </div>
+
+        <h3>Peringkat Keseluruhan</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Peringkat</th>
+                    <th>Nama</th>
+                    <th>Skor Tertinggi</th>
+                    <th>Percobaan</th>
+                </tr>
+            </thead>
+            <tbody id="result-leaderboard-body">
+                <!-- Data Peringkat -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Master Data 183 Kanji Irodori 1
+    const irodoriKanjiList = [
+        { kanji: '学生', kana: 'がくせい', meaning: 'Siswa, pelajar' },
+        { kanji: '学校', kana: 'がっこう', meaning: 'Sekolah' },
+        { kanji: '生活', kana: 'せいかつ', meaning: 'Kehidupan' },
+        { kanji: '去年', kana: 'きょねん', meaning: 'Tahun lalu' },
+        { kanji: '先週', kana: 'せんしゅう', meaning: 'Minggu lalu' },
+        { kanji: '仕事', kana: 'しごと', meaning: 'Pekerjaan' },
+        { kanji: '元気', kana: 'げんき', meaning: 'Sehat, bersemangat' },
+        { kanji: '忙しい', kana: 'いそがしい', meaning: 'Sibuk' },
+        { kanji: '働く', kana: 'はたらく', meaning: 'Bekerja' },
+        { kanji: '作る', kana: 'つくる', meaning: 'Membuat' },
+        { kanji: '人', kana: 'ひと', meaning: 'Orang' },
+        { kanji: '犬', kana: 'いぬ', meaning: 'Anjing' },
+        { kanji: '家族', kana: 'かぞく', meaning: 'Keluarga' },
+        { kanji: '夕方', kana: 'ゆうがた', meaning: 'Sore' },
+        { kanji: '英語', kana: 'えいご', meaning: 'Bahasa Inggris' },
+        { kanji: '音楽', kana: 'おんがく', meaning: 'Musik' },
+        { kanji: '習う', kana: 'ならう', meaning: 'Belajar' },
+        { kanji: '話す', kana: 'はなす', meaning: 'Berbicara' },
+        { kanji: '出かける', kana: 'でかける', meaning: 'Pergi keluar' },
+        { kanji: '季節', kana: 'きせつ', meaning: 'Musim' },
+        { kanji: '春', kana: 'はる', meaning: 'Musim semi' },
+        { kanji: '夏', kana: 'なつ', meaning: 'Musim panas' },
+        { kanji: '秋', kana: 'あき', meaning: 'Musim gugur' },
+        { kanji: '冬', kana: 'ふゆ', meaning: 'Musim dingin' },
+        { kanji: '花', kana: 'はな', meaning: 'Bunga' },
+        { kanji: '同じ', kana: 'おなじ', meaning: 'Sama' },
+        { kanji: '暑い', kana: 'あつい', meaning: 'Panas (cuaca)' },
+        { kanji: '寒い', kana: 'さむい', meaning: 'Dingin (cuaca)' },
+        { kanji: '天気', kana: 'てんき', meaning: 'Cuaca' },
+        { kanji: '晴れ', kana: 'はれ', meaning: 'Cerah' },
+        { kanji: '雨', kana: 'あめ', meaning: 'Hujan' },
+        { kanji: '雪', kana: 'ゆき', meaning: 'Salju' },
+        { kanji: '風', kana: 'かぜ', meaning: 'Angin' },
+        { kanji: '今', kana: 'いま', meaning: 'Sekarang' },
+        { kanji: '昨日', kana: 'きのう', meaning: 'Kemarin' },
+        { kanji: '明日', kana: 'あした', meaning: 'Besok' },
+        { kanji: '毎日', kana: 'まいにち', meaning: 'Setiap hari' },
+        { kanji: '強い', kana: 'つよい', meaning: 'Kuat' },
+        { kanji: '町', kana: 'まち', meaning: 'Kota' },
+        { kanji: '店', kana: 'みせ', meaning: 'Toko' },
+        { kanji: '食堂', kana: 'しょくどう', meaning: 'Kantin' },
+        { kanji: '便利', kana: 'べんり', meaning: 'Praktis' },
+        { kanji: '不便', kana: 'ふべん', meaning: 'Tidak praktis' },
+        { kanji: '静か', kana: 'しずか', meaning: 'Tenang' },
+        { kanji: '有名', kana: 'ゆうめい', meaning: 'Terkenal' },
+        { kanji: '多い', kana: 'おおい', meaning: 'Banyak' },
+        { kanji: '少ない', kana: 'すくない', meaning: 'Sedikit' },
+        { kanji: '遠い', kana: 'とおい', meaning: 'Jauh' },
+        { kanji: '道', kana: 'みち', meaning: 'Jalan' },
+        { kanji: '公園', kana: 'こうえん', meaning: 'Taman' },
+        { kanji: '銀行', kana: 'ぎんこう', meaning: 'Bank' },
+        { kanji: 'お寺', kana: 'おてら', meaning: 'Kuil Buddha' },
+        { kanji: '神社', kana: 'じんじゃ', meaning: 'Kuil Shinto' },
+        { kanji: '右', kana: 'みぎ', meaning: 'Kanan' },
+        { kanji: '左', kana: 'ひだり', meaning: 'Kiri' },
+        { kanji: '近く', kana: 'ちかく', meaning: 'Dekat' },
+        { kanji: '車', kana: 'くるま', meaning: 'Mobil' },
+        { kanji: '送る', kana: 'おくる', meaning: 'Mengantar' },
+        { kanji: '時間', kana: 'じかん', meaning: 'Waktu' },
+        { kanji: '場所', kana: 'ばしょ', meaning: 'Tempat' },
+        { kanji: '駅', kana: 'えき', meaning: 'Stasiun' },
+        { kanji: '受付', kana: 'うけつけ', meaning: 'Resepsionis' },
+        { kanji: '門', kana: 'もん', meaning: 'Gerbang' },
+        { kanji: '電車', kana: 'でんしゃ', meaning: 'Kereta listrik' },
+        { kanji: '待つ', kana: 'まつ', meaning: 'Menunggu' },
+        { kanji: '止まる', kana: 'とまる', meaning: 'Berhenti' },
+        { kanji: '着く', kana: 'つく', meaning: 'Tiba' },
+        { kanji: '急ぐ', kana: 'いそぐ', meaning: 'Bergegas' },
+        { kanji: 'お金', kana: 'おかね', meaning: 'Uang' },
+        { kanji: '食事', kana: 'しょくじ', meaning: 'Makan, hidangan' },
+        { kanji: '博物館', kana: 'はくぶつかん', meaning: 'Museum' },
+        { kanji: '動物園', kana: 'どうぶつえん', meaning: 'Kebun binatang' },
+        { kanji: '試合', kana: 'しあい', meaning: 'Pertandingan' },
+        { kanji: '楽しい', kana: 'たのしい', meaning: 'Menyenangkan' },
+        { kanji: '難しい', kana: 'むずかしい', meaning: 'Sulit' },
+        { kanji: '登る', kana: 'のぼる', meaning: 'Mendaki' },
+        { kanji: '高校', kana: 'こうこう', meaning: 'SMA' },
+        { kanji: '大学', kana: 'だいがく', meaning: 'Universitas' },
+        { kanji: '練習', kana: 'れんしゅう', meaning: 'Latihan' },
+        { kanji: '漢字', kana: 'かんじ', meaning: 'Huruf Kanji' },
+        { kanji: '無料', kana: 'むりょう', meaning: 'Gratis' },
+        { kanji: '言う', kana: 'いう', meaning: 'Mengatakan' },
+        { kanji: '書く', kana: 'かく', meaning: 'Menulis' },
+        { kanji: '貸す', kana: 'かす', meaning: 'Memijamkan' },
+        { kanji: '教える', kana: 'おしえる', meaning: 'Mengajar' },
+        { kanji: '説明する', kana: 'せつめいする', meaning: 'Menjelaskan' },
+        { kanji: '午前', kana: 'ごぜん', meaning: 'Pagi (a.m.)' },
+        { kanji: '午後', kana: 'ごご', meaning: 'Siang/sore (p.m.)' },
+        { kanji: '教科書', kana: 'きょうかしょ', meaning: 'Buku pelajaran' },
+        { kanji: '教室', kana: 'きょうしつ', meaning: 'Ruang kelas' },
+        { kanji: '先生', kana: 'せんせい', meaning: 'Guru' },
+        { kanji: '全部', kana: 'ぜんぶ', meaning: 'Semua' },
+        { kanji: '参加する', kana: 'さんかする', meaning: 'Berpartisipasi' },
+        { kanji: '用意する', kana: 'よういする', meaning: 'Menyiapkan' },
+        { kanji: '飲み物', kana: 'のみもの', meaning: 'Minuman' },
+        { kanji: 'お茶', kana: 'おちゃ', meaning: 'Teh' },
+        { kanji: 'お酒', kana: 'おさけ', meaning: 'Minuman beralkohol' },
+        { kanji: '材料', kana: 'ざいりょう', meaning: 'Bahan' },
+        { kanji: '野菜', kana: 'やさい', meaning: 'Sayuran' },
+        { kanji: '牛肉', kana: 'ぎゅうにく', meaning: 'Daging sapi' },
+        { kanji: '豚肉', kana: 'ぶたにく', meaning: 'Daging babi' },
+        { kanji: '皿', kana: 'さら', meaning: 'Piring' },
+        { kanji: '売る', kana: 'うる', meaning: 'Menjual' },
+        { kanji: '持って行く', kana: 'もっていく', meaning: 'Membawa pergi' },
+        { kanji: '卵', kana: 'たまご', meaning: 'Telur' },
+        { kanji: '料理', kana: 'りょうり', meaning: 'Masakan' },
+        { kanji: 'お湯', kana: 'おゆ', meaning: 'Air panas' },
+        { kanji: '少し', kana: 'すこし', meaning: 'Sedikit' },
+        { kanji: '味', kana: 'あじ', meaning: 'Rasa' },
+        { kanji: '甘い', kana: 'あまい', meaning: 'Manis' },
+        { kanji: '辛い', kana: 'からい', meaning: 'Pedas' },
+        { kanji: '数字', kana: 'すうじ', meaning: 'Angka' },
+        { kanji: '電気', kana: 'でんき', meaning: 'Listrik' },
+        { kanji: '音', kana: 'おと', meaning: 'Suara' },
+        { kanji: '机', kana: 'つくえ', meaning: 'Meja' },
+        { kanji: '都合', kana: 'つごう', meaning: 'Keadaan/Jadwal' },
+        { kanji: '悪い', kana: 'わるい', meaning: 'Buruk' },
+        { kanji: '動く', kana: 'うごく', meaning: 'Bergerak' },
+        { kanji: '使う', kana: 'つかう', meaning: 'Menggunakan' },
+        { kanji: '終わる', kana: 'おわる', meaning: 'Selesai' },
+        { kanji: '用事', kana: 'ようじ', meaning: 'Keperluan' },
+        { kanji: '氏名', kana: 'しめい', meaning: 'Nama lengkap' },
+        { kanji: '理由', kana: 'りゆう', meaning: 'Alasan' },
+        { kanji: '連絡先', kana: 'れんらくさき', meaning: 'Kontak' },
+        { kanji: '早く', kana: 'はやく', meaning: 'Cepat' },
+        { kanji: '吸う', kana: 'すう', meaning: 'Mengisap' },
+        { kanji: '取る', kana: 'とる', meaning: 'Mengambil' },
+        { kanji: '帰る', kana: 'かえる', meaning: 'Pulang' },
+        { kanji: '伝える', kana: 'つたえる', meaning: 'Menyampaikan' },
+        { kanji: '熱', kana: 'ねつ', meaning: 'Demam' },
+        { kanji: '薬', kana: 'くすり', meaning: 'Obat' },
+        { kanji: '病気', kana: 'びょうき', meaning: 'Sakit' },
+        { kanji: '病院', kana: 'びょういん', meaning: 'Rumah sakit' },
+        { kanji: '医者', kana: 'いしゃ', meaning: 'Dokter' },
+        { kanji: '住所', kana: 'じゅうしょ', meaning: 'Alamat' },
+        { kanji: '痛い', kana: 'いたい', meaning: 'Sakit (nyeri)' },
+        { kanji: '眠い', kana: 'ねむい', meaning: 'Mengantuk' },
+        { kanji: '寝る', kana: 'ねる', meaning: 'Tidur' },
+        { kanji: '体', kana: 'からだ', meaning: 'Tubuh' },
+        { kanji: '顔', kana: 'かお', meaning: 'Muka' },
+        { kanji: '目', kana: 'め', meaning: 'Mata' },
+        { kanji: '耳', kana: 'みみ', meaning: 'Telinga' },
+        { kanji: '頭', kana: 'あたま', meaning: 'Kepala' },
+        { kanji: '足', kana: 'あし', meaning: 'Kaki' },
+        { kanji: '手', kana: 'て', meaning: 'Tangan' },
+        { kanji: '起きる', kana: 'おきる', meaning: 'Bangun' },
+        { kanji: '歩く', kana: 'あるく', meaning: 'Berjalan' },
+        { kanji: '走る', kana: 'はしる', meaning: 'Berlari' },
+        { kanji: 'お父さん', kana: 'おとうさん', meaning: 'Ayah' },
+        { kanji: 'お母さん', kana: 'おかあさん', meaning: 'Ibu' },
+        { kanji: '兄', kana: 'あに', meaning: 'Kakak Laki-laki' },
+        { kanji: '姉', kana: 'あね', meaning: 'Kakak Perempuan' },
+        { kanji: '弟', kana: 'おとうと', meaning: 'Adik Laki-laki' },
+        { kanji: '妹', kana: 'いもうと', meaning: 'Adik Perempuan' },
+        { kanji: '夫', kana: 'おっと', meaning: 'Suami' },
+        { kanji: '妻', kana: 'つま', meaning: 'Istri' },
+        { kanji: '両親', kana: 'りょうしん', meaning: 'Orang Tua' },
+        { kanji: '男の子', kana: 'おとこのこ', meaning: 'Anak Laki-laki' },
+        { kanji: '女の子', kana: 'おんなのこ', meaning: 'Anak Perempuan' },
+        { kanji: '誕生日', kana: 'たんじょうび', meaning: 'Ulang Tahun' },
+        { kanji: '結婚', kana: 'けっこん', meaning: 'Pernikahan' },
+        { kanji: '時計', kana: 'とけい', meaning: 'Jam Tangan' },
+        { kanji: '思う', kana: 'おもう', meaning: 'Berpikir' },
+        { kanji: '選ぶ', kana: 'えらぶ', meaning: 'Memilih' },
+        { kanji: '合格する', kana: 'ごうかくする', meaning: 'Lulus' }
+    ];
+
+    let currentUser = "";
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let chartInstance = null;
+    let quizQuestions = [];
+    let userAnswers = []; // Menyimpan riwayat jawaban kuis yang sedang berjalan
+
+    function getStoredData() {
+        return JSON.parse(localStorage.getItem('irodori_kanji_app')) || {};
+    }
+
+    function saveData(data) {
+        localStorage.setItem('irodori_kanji_app', JSON.stringify(data));
+    }
+
+    function shuffleArray(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    // Mengambil pilihan pengecoh pintar dengan mencocokkan akhiran huruf (misal: "る")
+    function SmartDistractors(targetItem, isReadType) {
+        const key = isReadType ? 'kana' : 'kanji';
+        const targetValue = targetItem[key];
+        const lastChar = targetValue.slice(-1); // Ambil huruf terakhir
+
+        const otherItems = irodoriKanjiList.filter(x => x.kanji !== targetItem.kanji);
+        
+        // Cari pilihan yang memiliki akhiran yang sama (misal: akhiran 'る')
+        let matchingEndings = otherItems.filter(x => x[key].endsWith(lastChar));
+        
+        // Jika pilihan akhiran sama kurang dari 3, tambahkan dari acakan biasa
+        let selectedDistractors = [];
+        if (matchingEndings.length >= 3) {
+            selectedDistractors = shuffleArray(matchingEndings).slice(0, 3);
+        } else {
+            const remainingNeeded = 3 - matchingEndings.length;
+            const nonMatching = otherItems.filter(x => !x[key].endsWith(lastChar));
+            selectedDistractors = [
+                ...matchingEndings,
+                ...shuffleArray(nonMatching).slice(0, remainingNeeded)
+            ];
+        }
+
+        return selectedDistractors.map(item => item[key]);
+    }
+
+    // Menjana 50 soal otomatis dari master data
+    function generate50Questions() {
+        const shuffledList = shuffleArray([...irodoriKanjiList]).slice(0, 50);
+        
+        return shuffledList.map((item, idx) => {
+            const isReadType = idx % 2 === 0; // Berselang-seling tipe soal
+            const distractors = SmartDistractors(item, isReadType);
+
+            if (isReadType) {
+                return {
+                    type: 'read',
+                    target: item.kanji,
+                    answer: item.kana,
+                    options: shuffleArray([item.kana, ...distractors])
+                };
+            } else {
+                return {
+                    type: 'write',
+                    target: `${item.kana} (${item.meaning})`,
+                    answer: item.kanji,
+                    options: shuffleArray([item.kanji, ...distractors])
+                };
+            }
+        });
+    }
+
+    function startApp() {
+        const usernameInput = document.getElementById('username').value.trim();
+        if (!usernameInput) {
+            alert('Harap masukkan nama Anda!');
+            return;
+        }
+        currentUser = usernameInput;
+
+        let appData = getStoredData();
+        if (!appData[currentUser]) {
+            appData[currentUser] = { history: [], maxScore: 0 };
+            saveData(appData);
+        }
+
+        document.getElementById('user-display').innerText = `User: ${currentUser}`;
+        switchScreen('quiz-screen');
+        restartQuiz();
+    }
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function restartQuiz() {
+        currentQuestionIndex = 0;
+        score = 0;
+        userAnswers = [];
+        quizQuestions = generate50Questions();
+        switchScreen('quiz-screen');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const q = quizQuestions[currentQuestionIndex];
+        
+        document.getElementById('question-number').innerText = `Soal ${currentQuestionIndex + 1} / 50`;
+        document.getElementById('progress-fill').style.width = `${((currentQuestionIndex) / 50) * 100}%`;
+
+        if (q.type === 'read') {
+            document.getElementById('question-title').innerText = "Bagaimana cara membaca Kanji berikut?";
+            document.getElementById('kanji-target').innerText = q.target;
+        } else {
+            document.getElementById('question-title').innerText = "Pilihlah Kanji yang tepat untuk kata berikut:";
+            document.getElementById('kanji-target').innerText = q.target;
+        }
+
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => handleAnswer(opt);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function handleAnswer(selectedOption) {
+        const q = quizQuestions[currentQuestionIndex];
+        const isCorrect = selectedOption === q.answer;
+
+        if (isCorrect) {
+            score += 2; // 50 soal * 2 point = 100
+        }
+
+        // Simpan rincian riwayat per soal
+        userAnswers.push({
+            questionTarget: q.target,
+            userChoice: selectedOption,
+            correctAnswer: q.answer,
+            isCorrect: isCorrect
+        });
+
+        currentQuestionIndex++;
+        if (currentQuestionIndex < 50) {
+            loadQuestion();
+        } else {
+            finishQuiz();
+        }
+    }
+
+    function finishQuiz() {
+        let appData = getStoredData();
+        
+        appData[currentUser].history.push(score);
+        if (score > appData[currentUser].maxScore) {
+            appData[currentUser].maxScore = score;
+        }
+        
+        saveData(appData);
+
+        document.getElementById('final-score').innerText = `Skor Akhir: ${score} / 100`;
+        switchScreen('result-screen');
+        renderQuizHistory();
+        renderChart();
+        renderLeaderboards();
+    }
+
+    // Menampilkan Tabel Rincian Jawaban Soal
+    function renderQuizHistory() {
+        const tbody = document.getElementById('quiz-history-body');
+        tbody.innerHTML = userAnswers.map((item, index) => {
+            const statusClass = item.isCorrect ? 'badge-correct' : 'badge-wrong';
+            const statusText = item.isCorrect ? 'Benar' : 'Salah';
+            
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><strong>${item.questionTarget}</strong></td>
+                    <td>${item.userChoice}</td>
+                    <td>${item.correctAnswer}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderChart() {
+        const appData = getStoredData();
+        const userHistory = appData[currentUser].history || [];
+        const labels = userHistory.map((_, index) => `Tes #${index + 1}`);
+
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Skor Pengerjaan',
+                    data: userHistory,
+                    borderColor: '#4a90e2',
+                    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+
+    function renderLeaderboards() {
+        const appData = getStoredData();
+        let users = [];
+
+        for (let name in appData) {
+            users.push({
+                name: name,
+                maxScore: appData[name].maxScore,
+                attempts: appData[name].history.length
+            });
+        }
+
+        users.sort((a, b) => b.maxScore - a.maxScore);
+
+        const createRows = (data) => {
+            return data.map((u, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${u.name}</td>
+                    <td>${u.maxScore}</td>
+                    <td>${u.attempts}x</td>
+                </tr>
+            `).join('');
+        };
+
+        document.getElementById('leaderboard-body').innerHTML = createRows(users);
+        document.getElementById('result-leaderboard-body').innerHTML = createRows(users);
+    }
+
+    function logout() {
+        document.getElementById('username').value = '';
+        switchScreen('auth-screen');
+        renderLeaderboards();
+    }
+
+    window.onload = () => {
+        renderLeaderboards();
+    };
+</script>
+
+</body>
+</html>
